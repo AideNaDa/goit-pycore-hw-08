@@ -42,6 +42,7 @@ class Name(Field):
     """
     Contact name with basic validation.
     """
+
     def __init__(self, value):
         if len(value) > 21:
             raise ValueError("The name can consist of a maximum of 21 characters.")
@@ -63,11 +64,12 @@ class Birthday(Field):
     """
     Birthday date with basic validation.
     """
+
     def __init__(self, value):
         try:
             date_obj = datetime.strptime(value, "%d-%m-%Y").date()
         except ValueError:
-            if value.count('-') != 2:
+            if value.count("-") != 2:
                 raise ValueError("Invalid date format. Use DD-MM-YYYY")
             raise ValueError(f"Invalid date: '{value}' does not exist.")
 
@@ -338,6 +340,7 @@ def delete_record(args, book):
         raise ValueError("Usage: del [name]")
     name, *_ = args
     return book.delete(name)
+
 
 def command_list():
     """
