@@ -2,16 +2,18 @@ from functools import wraps
 from collections import UserDict
 from datetime import datetime, timedelta
 import pickle
+from typing import Any, Dict, List, Callable
 
 
-def input_error(func):
+def input_error(func: Callable) -> Callable:
     @wraps(func)
-    def inner(*args, **kwargs):
+    def inner(*args, **kwargs) -> str:
         try:
             return func(*args, **kwargs)
         except ValueError as e:
             # Catches data validation errors (incorrect phone number, date)
-            # And errors due to missing arguments, which we will discard manually
+            # And errors due to missing arguments,
+            # which we will discard manually
             return str(e)
         except KeyError as e:
             # Catches "Contact not found" errors
@@ -31,10 +33,10 @@ class Field:
     Base class for contact fields.
     """
 
-    def __init__(self, value):
+    def __init__(self, value: Any) -> None:
         self.value = value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value)
 
 
@@ -43,9 +45,11 @@ class Name(Field):
     Contact name with basic validation.
     """
 
-    def __init__(self, value):
+    def __init__(self, value: str) -> None:
         if len(value) > 21:
-            raise ValueError("The name can consist of a maximum of 21 characters.")
+            raise ValueError(
+                "The name can consist of a maximum of 21 characters."
+            )
         super().__init__(value)
 
 
@@ -54,7 +58,7 @@ class Phone(Field):
     Phone number with basic validation.
     """
 
-    def __init__(self, value):
+    def __init__(self, value: str) -> None:
         if len(value) != 10:
             raise ValueError("Phone number must be a 10-digit number.")
         super().__init__(value)
@@ -65,7 +69,7 @@ class Birthday(Field):
     Birthday date with basic validation.
     """
 
-    def __init__(self, value):
+    def __init__(self, value: str) -> None:
         try:
             date_obj = datetime.strptime(value, "%d-%m-%Y").date()
         except ValueError:
@@ -81,24 +85,24 @@ class Record:
     Single contact record.
     """
 
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = Name(name)
         self.phones = []
         self.birthday = None
 
-    def add_phone(self, phone):
+    def add_phone(self, phone: str) -> None:
         if self.find_phone(phone):
             raise ValueError("Phone already exists")
 
         self.phones.append(Phone(phone))
 
-    def remove_phone(self, phone):
+    def remove_phone(self, phone: str) -> None:
         is_phone = self.find_phone(phone)
         if is_phone is None:
             raise ValueError(f"Phone {phone} not found in this contact.")
         self.phones.remove(is_phone)
 
-    def edit_phone(self, old_phone, new_phone):
+    def edit_phone(self, old_phone: str, new_phone: str) -> None:
         is_phone = self.find_phone(old_phone)
         if is_phone is None:
             raise ValueError(f"Phone {old_phone} not found in this contact.")
@@ -108,13 +112,13 @@ class Record:
         self.remove_phone(old_phone)
         self.add_phone(new_phone)
 
-    def find_phone(self, phone):
+    def find_phone(self, phone: str) -> Phone | None:
         for p in self.phones:
             if p.value == phone:
                 return p
         return None
 
-    def add_birthday(self, birthday):
+    def add_birthday(self, birthday: str) -> None:
         correct_birthday = Birthday(birthday)
         self.birthday = correct_birthday
 
@@ -128,65 +132,21 @@ class AddressBook(UserDict):
     Container for contact records.
     """
 
-    def add_record(self, record):
+    def add_record(self, record: Record) -> None:
         self.data[record.name.value] = record
 
-    def find(self, name):
+    def find(self, name: str) -> Record | None:
         return self.data.get(name)
 
-    def delete(self, name):
+    def delete(self, name: str) -> str:
         if name in self.data:
             del self.data[name]
             return f"Contact '{name}' has been deleted"
         else:
             raise KeyError(f"Contact '{name}' not found.")
 
-    def get_upcoming_birthdays(self):
-        """
-        Finds birthdays within 7 days and carries over congratulations from weeks
-        """
-        current_date = datetime.today().date()
-        congr_date_list = []
 
-        for user in self.data:
-            # convert srting to object date
-            record = self.data[user]
-
-            if record.birthday is None:
-                continue
-
-            birthday_date = record.birthday.value
-            birthday_this_year = birthday_date.replace(year=current_date.year)
-
-            # if birthday has already passed this year try next year
-            if birthday_this_year < current_date:
-                birthday_this_year = birthday_date.replace(year=current_date.year + 1)
-
-            difference_days = (birthday_this_year - current_date).days
-
-            # check if the date falls within the 7-day interval
-            if 0 <= difference_days <= 7:
-
-                congr_date = birthday_this_year
-                # transfer from weekend to Monday
-                # 6 - Sunday, 5 - Saturday
-                match birthday_this_year.weekday():
-                    case 6:
-                        congr_date += timedelta(days=1)
-                    case 5:
-                        congr_date += timedelta(days=2)
-
-                congr_date_list.append(
-                    {
-                        "name": user,
-                        "congratulation_date": congr_date.strftime("%d-%m-%Y"),
-                    }
-                )
-
-        return congr_date_list
-
-
-def parse_input(user_input):
+def parse_input(user_input: str) -> tuple:
     """
     Parses the user input into a command and arguments.
     """
@@ -196,7 +156,7 @@ def parse_input(user_input):
 
 
 @input_error
-def add_contact(args, book):
+def add_contact(args, book: AddressBook) -> str:
     """
     Add either a new contact with a name and phone number,
     or a phone number to an existing contact.
@@ -219,7 +179,7 @@ def add_contact(args, book):
 
 
 @input_error
-def change_contact_phone(args, book):
+def change_contact_phone(args, book: AddressBook) -> str:
     """
     Updates the phone number for an specified existing contact.
     Usage: change [name] [old_phone] [new_phone]
@@ -235,7 +195,7 @@ def change_contact_phone(args, book):
 
 
 @input_error
-def show_phone(args, book):
+def show_phone(args, book: AddressBook) -> str:
     """
     Shows the phone number for a specific contact.
     Usage: phone [name]
@@ -251,9 +211,9 @@ def show_phone(args, book):
 
 
 @input_error
-def add_birthday(args, book):
+def add_birthday(args, book: AddressBook) -> str:
     """
-    Add a date of birth for the specified contact.
+    Add or update the birthday for a specific contact.
     Usage: add-birthday [name] [birthday date]
     """
     message = "Contact's birthday added"
@@ -270,7 +230,7 @@ def add_birthday(args, book):
 
 
 @input_error
-def show_birthday(args, book):
+def show_birthday(args, book: AddressBook) -> str:
     """
     Display the date of birth for the specified contact.
     Usage: show-birthday [name]
@@ -281,31 +241,51 @@ def show_birthday(args, book):
     record = book.find(name)
     if record is None:
         raise KeyError(f"Contact '{name}' not found.")
-    return record.birthday
+    return str(record.birthday) if record.birthday else "Birthday not set."
 
 
-def birthdays(book):
-    """
-    Show birthdays that will occur during the next 7 days.
-    Usage: birthdays
-    """
-    upcoming = book.get_upcoming_birthdays()
+def birthdays(book: AddressBook) -> str:
+    today = datetime.today().date()
+    upcoming = []
+
+    for name, record in book.data.items():
+        if not record.birthday:
+            continue
+
+        # We determine the date of birth this year to check if it's upcoming
+        bday = record.birthday.value.replace(year=today.year)
+        if bday < today:
+            bday = bday.replace(year=today.year + 1)
+
+        # Elegant table formatting with weekend handling
+        if 0 <= (bday - today).days <= 7:
+            # Transfer from the weekend to Monday
+            weekday = bday.weekday()
+            congr_date = bday + timedelta(
+                days=(7 - weekday if weekday >= 5 else 0)
+            )
+
+            upcoming.append(
+                {"name": name, "date": congr_date.strftime("%d-%m-%Y")}
+            )
+
     if not upcoming:
         return "No upcoming birthdays in the next 7 days."
 
-    header = f"{'Name':<21} | {'Upcoming birthdays':<21}"
+    # Elegant table formatting
+    header = f"{'Name':<15} | {'Congratulation Date':<20}"
     separator = "-" * 45
 
-    lines = [header, separator]
+    lines = [separator, header, separator]
 
-    for record in upcoming:
-        lines.append(f"{record['name']:<21} | {record['congratulation_date']:<21}")
+    for item in upcoming:
+        lines.append(f"{item['name']:<15} | {item['date']:<20}")
         lines.append(separator)
 
     return "\n".join(lines)
 
 
-def show_all(book):
+def show_all(book: AddressBook) -> str:
     """
     Displays all saved contacts.
     Usage: all
@@ -316,7 +296,7 @@ def show_all(book):
     header = f"{'Name':<21} | {'Phone':<21}"
     separator = "-" * 45
 
-    lines = [header, separator]
+    lines = [separator, header, separator]
 
     for record in book.data.values():
         phones = record.phones
@@ -331,7 +311,7 @@ def show_all(book):
     return "\n".join(lines)
 
 
-def delete_record(args, book):
+def delete_record(args, book: AddressBook) -> str:
     """
     Delete contact from AddressBook
     Usale: del [name]
@@ -342,7 +322,7 @@ def delete_record(args, book):
     return book.delete(name)
 
 
-def command_list():
+def command_list() -> None:
     """
     Displays all command.
     """
@@ -359,17 +339,19 @@ def command_list():
     print("-" * 45)
 
 
-def save_data(book, filename="addressbook.pkl"):
+def save_data(book, filename="addressbook.pkl") -> None:
     with open(filename, "wb") as f:
         pickle.dump(book, f)
 
 
-def load_data(filename="addressbook.pkl"):
+def load_data(filename="addressbook.pkl") -> AddressBook:
     try:
         with open(filename, "rb") as f:
             return pickle.load(f)
     except FileNotFoundError:
-        return AddressBook()  # Return a new address book if the file is not found
+        return (
+            AddressBook()
+        )  # Return a new address book if the file is not found
 
 
 def main():
