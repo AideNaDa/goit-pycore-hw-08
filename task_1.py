@@ -330,16 +330,17 @@ def show_all(book: AddressBook) -> str:
     return "\n".join(lines)
 
 
+@input_error
 def delete_record(args: list[str], book: AddressBook) -> str:
     """
-    Delete contact from AddressBook
+    Delete contact from AddressBook.
 
     Usage: del [name]
     """
     if len(args) < 1:
         raise ValueError("Usage: del [name]")
-    name, *_ = args
 
+    name, *_ = args
     return book.delete(name)
 
 
